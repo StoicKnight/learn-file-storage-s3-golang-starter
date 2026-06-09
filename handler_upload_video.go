@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"mime"
 	"net/http"
@@ -82,6 +83,19 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 	}
 
 	key := getAssetPath(mediaType)
+	aspectRatio, err := getVideoAspectRatio(tempFile.Name())
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Could not get video aspect ratio", err)
+		return
+	}
+	if aspectRatio == "16:9" {
+		key = fmt.Sprintf("%s/%s", "landscape", key)
+	} else if aspectRatio == "9:16" {
+		key = fmt.Sprintf("%s/%s", "portrait", key)
+	} else {
+		key = fmt.Sprintf("%s/%s", "other", key)
+	}
+
 	_, err = cfg.s3Client.PutObject(
 		r.Context(),
 		&s3.PutObjectInput{
